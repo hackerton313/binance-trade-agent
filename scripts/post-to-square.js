@@ -1,11 +1,11 @@
 // scripts/post-to-square.js
 // ينشر منشوراً مع صورة على Binance Square
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 
-// المسار الفعلي للمهارة المستنسخة
+// المسار الفعلي للمهارة المستنسخة في GitHub Actions
 const SKILL_SCRIPT = '/tmp/binance-skills/skills/binance/square-post/scripts/post-image.mjs';
 
 function postWithImage(text, imagePath) {
@@ -19,8 +19,8 @@ function postWithImage(text, imagePath) {
   }
 
   if (!fs.existsSync(SKILL_SCRIPT)) {
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: `الملف غير موجود: ${SKILL_SCRIPT}`,
       hint: 'تحقق من خطوة Clone square-post skill في الـ workflow'
     };
@@ -28,20 +28,17 @@ function postWithImage(text, imagePath) {
 
   // استبدل علامات الاقتباس
   const safeText = text.replace(/"/g, '\\"');
-
   const absImagePath = path.resolve(imagePath);
-
-  // استخدم cwd = مجلد المهارة لأن السكريبت يحتاج node_modules الخاصة به
   const skillDir = path.dirname(path.dirname(SKILL_SCRIPT));
 
   try {
     const cmd = `BINANCE_SQUARE_OPENAPI_KEY="${apiKey}" node "${SKILL_SCRIPT}" --text "${safeText}" --images "${absImagePath}"`;
-    
-    console.log(`▶️  تشغيل: node post-image.mjs`);
+
+    console.log(`▶️  تشغيل post-image.mjs`);
     console.log(`📁 مجلد المهارة: ${skillDir}`);
     console.log(`🖼️  الصورة: ${absImagePath}`);
 
-    const output = execSync(cmd, { 
+    const output = execSync(cmd, {
       encoding: 'utf-8',
       timeout: 120000,
       cwd: skillDir,
@@ -51,8 +48,8 @@ function postWithImage(text, imagePath) {
     console.log(output);
     return { success: true, output };
   } catch (error) {
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: error.message.slice(0, 300),
       stdout: error.stdout?.toString().slice(0, 500),
       stderr: error.stderr?.toString().slice(0, 500)
@@ -60,4 +57,4 @@ function postWithImage(text, imagePath) {
   }
 }
 
-module.exports = { postWithImage };
+export { postWithImage };
