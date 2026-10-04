@@ -104,7 +104,8 @@ async function generateChartForCoin(symbol, timeframe, outputPath) {
   myChart.setBackgroundColor(COLORS.background);
   myChart.setFormat('png');
   myChart.setDevicePixelRatio(1.5);
-
+  myChart.setVersion('4');
+  
   const chartConfig = {
     type: 'candlestick',
     data: {
