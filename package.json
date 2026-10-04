@@ -5,8 +5,7 @@
   "main": "scripts/main.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node scripts/main.js",
-    "chart": "node scripts/generate-chart.js"
+    "start": "node scripts/main.js"
   },
   "dependencies": {
     "@neabyte/chart-to-image": "^1.1.5",
