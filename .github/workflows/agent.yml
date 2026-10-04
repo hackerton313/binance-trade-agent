@@ -1,0 +1,32 @@
+name: Binance Trade Agent
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'  # كل ساعتين
+  workflow_dispatch:        # يدوياً من GitHub
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install square-post skill
+        run: |
+          npx skills add https://github.com/binance/binance-skills-hub/tree/main/skills/binance/square-post
+
+      - name: Run agent
+        env:
+          BINANCE_SQUARE_OPENAPI_KEY: ${{ secrets.BINANCE_SQUARE_OPENAPI_KEY }}
+        run: node scripts/main.js
