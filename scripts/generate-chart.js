@@ -1,6 +1,7 @@
 // scripts/generate-chart.js
-// يختار عملة عشوائية من قائمة 200 عملة ويولّد شارت TradingView
+// يختار عملة عشوائية من قائمة العملات ويولّد شارت TradingView
 // الوضع: Dark Theme + RSI + Supertrend + فريم 4h
+// مع فحص "doesn't exist" + فحص حجم الملف + 5 محاولات
 
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -9,32 +10,44 @@ import path from 'path';
 const OUTPUT_DIR = './charts';
 const MAX_ATTEMPTS = 5;
 
-// قائمة 200 عملة مشهورة
+// قائمة العملات الجديدة (يتم إزالة التكرار تلقائياً)
 const POPULAR_COINS = [
-  'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'TRX',
-  'LINK', 'MATIC', 'LTC', 'BCH', 'UNI', 'ATOM', 'XLM', 'ETC', 'FIL', 'APT',
-  'ARB', 'OP', 'INJ', 'TIA', 'SUI', 'SEI', 'NEAR', 'ICP', 'HBAR', 'VET',
-  'ALGO', 'GRT', 'STX', 'IMX', 'FTM', 'SAND', 'MANA', 'AXS', 'CRO', 'AAVE',
-  'MKR', 'SNX', 'COMP', 'CRV', '1INCH', 'SUSHI', 'ENJ', 'CHZ', 'ZIL', 'BAT',
-  'RNDR', 'FET', 'AGIX', 'OCEAN', 'TAO', 'NMR', 'SHIB', 'PEPE', 'FLOKI', 'BONK',
-  'AR', 'KSM', 'ZEC', 'DASH', 'WAVES', 'EGLD', 'THETA', 'CAKE', 'AXL', 'RUNE',
-  'GALA', 'APE', 'GMT', 'LDO', 'ENS', 'DYDX', 'MASK', 'SSV', 'BLUR', 'ID',
-  'WOO', 'KAVA', 'ROSE', 'CFX', 'MAGIC', 'HIGH', 'MULTI', 'ACH', 'DENT', 'HOT',
-  'COTI', 'ANKR', 'STORJ', 'BAND', 'LRC', 'ILV', 'YFI', 'BAL', 'REN', 'KNC',
-  'ZRX', 'OMG', 'REP', 'ANT', 'MLN', 'KEEP', 'NU', 'PNT', 'JASMY', 'IOTX',
-  'CVC', 'MITH', 'CTSI', 'TRB', 'POWR', 'RLC', 'NKN', 'OGN', 'CTK', 'STMX',
-  'DUSK', 'WAN', 'ARK', 'SYS', 'VITE', 'PERP', 'DODO', 'ALPHA', 'BEL', 'CREAM',
-  'FOR', 'BURGER', 'PROM', 'ALPACA', 'POND', 'TROY', 'DIA', 'FIS', 'REEF', 'DEGO',
-  'VIDT', 'TWT', 'BIFI', 'EPS', 'BOND', 'QUICK', 'POLS', 'MIR', 'LINA', 'LIT',
-  'TCT', 'BTS', 'TORN', 'DOCK', 'NULS', 'WTC', 'NAS', 'ICX', 'LSK', 'IOST',
-  'ZIL', 'ONT', 'QTUM', 'STRAT', 'NEBL', 'GAS', 'NEO', 'ARK', 'WAVES', 'ZEN',
-  'XTZ', 'DGB', 'DCR', 'RDD', 'VIA', 'VTC', 'SYS', 'PIVX', 'NXS', 'GAME',
-  'FUN', 'PAY', 'LRC', 'MAN', 'POWR', 'REQ', 'ZRX', 'BAT', 'LOOM', 'NPXS',
-  'CMT', 'ELF', 'MFT', 'DENT', 'HOT', 'AVA', 'ENG', 'COSM', 'OCEAN', 'STORJ'
+  'BTC', 'ETH', 'BNB', 'XRP', 'SOL', 'TRX', 'DOGE', 'ADA', 'BCH', 'LINK',
+  'LTC', 'XLM', 'HBAR', 'AVAX', 'SUI', 'SHIB', 'DOT', 'UNI', 'NEAR', 'AAVE',
+  'APT', 'PEPE', 'ICP', 'ETC', 'FIL', 'ATOM', 'ALGO', 'VET', 'POL', 'RENDER',
+  'ARB', 'OP', 'INJ', 'STX', 'IMX', 'GRT', 'THETA', 'MKR', 'RUNE', 'SEI',
+  'JUP', 'WLD', 'TIA', 'LDO', 'JASMY', 'FLOW', 'SAND', 'MANA', 'AXS', 'EOS',
+  'XTZ', 'QNT', 'NEO', 'EGLD', 'KAVA', 'MINA', 'SNX', 'DYDX', 'CRV', 'COMP',
+  '1INCH', 'SUSHI', 'CAKE', 'ENS', 'LPT', 'AR', 'CFX', 'ZEC', 'DASH', 'IOTA',
+  'KSM', 'ROSE', 'CELO', 'ZIL', 'QTUM', 'ANKR', 'CHZ', 'BAT', 'IOTX', 'HOT',
+  'ONE', 'ONT', 'ZRX', 'RVN', 'ICX', 'WOO', 'YFI', 'UMA', 'API3', 'SSV',
+  'GMX', 'GALA', 'ENJ', 'APE', 'GMT', 'MAGIC', 'BLUR', 'MEME', 'ORDI', 'SATS',
+  '1000SATS', 'TURBO', 'FLOKI', 'BONK', 'WIF', 'BOME', 'NOT', 'PEOPLE', 'DOGS', 'NEIRO',
+  'ACT', 'PNUT', 'POPCAT', 'MEW', 'BRETT', 'MOG', 'BABYDOGE', 'SLERF', 'MYRO', 'TNSR',
+  'PYTH', 'JTO', 'W', 'WAL', 'JST', 'SUN', 'TWT', 'RAY', 'ORCA', 'KMNO',
+  'DRIFT', 'HNT', 'IOT', 'TAO', 'FET', 'AGIX', 'OCEAN', 'AI', 'ARKM', 'NMR',
+  'GLM', 'AKT', 'ATH', 'AERO', 'ONDO', 'ENA', 'EIGEN', 'ETHFI', 'PENDLE', 'MORPHO',
+  'SAFE', 'ZK', 'ZRO', 'STRK', 'MANTA', 'DYM', 'ALT', 'PORTAL', 'PIXEL', 'AEVO',
+  'SCR', 'SAGA', 'LISTA', 'OMNI', 'IO', 'BB', 'REZ', 'SYN', 'CYBER', 'ID',
+  'HIGH', 'HOOK', 'EDU', 'XAI', 'RONIN', 'RON', 'ILV', 'YGG', 'GODS', 'GTC',
+  'LQTY', 'CVX', 'BAL', 'BNT', 'KNC', 'OXT', 'STORJ', 'SKL', 'CELR', 'CTSI',
+  'DENT', 'DUSK', 'LRC', 'MTL', 'NKN', 'OGN', 'OMG', 'PERP', 'RLC', 'STG',
+  'TRB', 'T', 'COTI', 'DGB', 'DCR', 'SC', 'WAXP', 'IOST', 'LSK', 'ARPA',
+  'CTK', 'FLM', 'FLUX', 'SYS', 'DODO', 'BAKE', 'BEL', 'BURGER', 'ALPHA', 'DEGO',
+  'FORTH', 'POND', 'AUDIO', 'MASK', 'MOVR', 'GLMR', 'ASTR', 'ACA', 'KLAY', 'KAIA',
+  'C98', 'LINA', 'REEF', 'ATA', 'ALPACA', 'FARM', 'TLM', 'SLP', 'ALICE', 'CHR',
+  'DAR', 'FIDA', 'MBOX', 'VOXEL', 'SANTOS', 'PORTO', 'LAZIO', 'CITY', 'PSG', 'BAR',
+  'ATM', 'ASR', 'ACM', 'JUV', 'OG', 'LEVER', 'XVG', 'WIN', 'KEY', 'MDX',
+  'PUNDIX', 'PROM', 'DIA', 'GHST', 'RAD', 'RARE', 'SUPER', 'AUCTION', 'MAV', 'MAVIA',
+  'ACE', 'SFP', 'CVC', 'STMX', 'REQ', 'WRX', 'UTK', 'PHA', 'VTHOR', 'VTHO',
+  'XNO', 'NULS', 'STRAX', 'ONG', 'NEWT', 'SXT', 'PROVE', 'PLUME', 'TREE', 'NXPC',
+  'MET', 'HOLO'
 ];
 
+// إزالة التكرار
 const UNIQUE_COINS = [...new Set(POPULAR_COINS)];
 
+// خلط المصفوفة
 function shuffle(array) {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -84,6 +97,18 @@ async function captureChart(symbol, interval, output) {
 
   await page.setContent(html);
   await page.waitForTimeout(12000);
+
+  // ✅ فحص "الرمز غير موجود"
+  const bodyText = await page.evaluate(() => document.body.innerText || '');
+  if (
+    bodyText.includes("doesn't exist") ||
+    bodyText.includes("does not exist") ||
+    bodyText.includes("This symbol")
+  ) {
+    await browser.close();
+    throw new Error('الرمز غير موجود على TradingView');
+  }
+
   await page.mouse.move(5, 5);
   await page.waitForTimeout(500);
   await page.screenshot({ path: output });
@@ -110,6 +135,7 @@ async function generateCharts() {
     try {
       await captureChart(symbol, '240', output);
 
+      // ✅ فحص حجم الملف
       const size = fs.statSync(output).size;
       if (size < 20000) {
         throw new Error(`الصورة صغيرة جداً (${(size / 1024).toFixed(1)} KB)`);
