@@ -9,7 +9,7 @@
     "chart": "node scripts/generate-chart.js"
   },
   "dependencies": {
-    "neabyte-chart-to-image": "^1.0.0",
+    "@neabyte/chart-to-image": "^1.1.5",
     "axios": "^1.7.0"
   },
   "engines": {
