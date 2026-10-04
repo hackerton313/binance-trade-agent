@@ -1,5 +1,6 @@
 // scripts/generate-chart.js
-// يختار عملة عشوائية من قائمة 200 عملة مشهورة ويولّد شارت TradingView
+// يختار عملة عشوائية من قائمة 200 عملة ويولّد شارت TradingView
+// الوضع: Dark Theme + RSI + Supertrend + فريم 4h
 
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -8,41 +9,32 @@ import path from 'path';
 const OUTPUT_DIR = './charts';
 const MAX_ATTEMPTS = 5;
 
-// قائمة 200 عملة مشهورة (مرتبة حسب القيمة السوقية)
+// قائمة 200 عملة مشهورة
 const POPULAR_COINS = [
-  // Top 20
   'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'TRX',
   'LINK', 'MATIC', 'LTC', 'BCH', 'UNI', 'ATOM', 'XLM', 'ETC', 'FIL', 'APT',
-  // 21-50
   'ARB', 'OP', 'INJ', 'TIA', 'SUI', 'SEI', 'NEAR', 'ICP', 'HBAR', 'VET',
   'ALGO', 'GRT', 'STX', 'IMX', 'FTM', 'SAND', 'MANA', 'AXS', 'CRO', 'AAVE',
   'MKR', 'SNX', 'COMP', 'CRV', '1INCH', 'SUSHI', 'ENJ', 'CHZ', 'ZIL', 'BAT',
-  // 51-80
   'RNDR', 'FET', 'AGIX', 'OCEAN', 'TAO', 'NMR', 'SHIB', 'PEPE', 'FLOKI', 'BONK',
   'AR', 'KSM', 'ZEC', 'DASH', 'WAVES', 'EGLD', 'THETA', 'CAKE', 'AXL', 'RUNE',
   'GALA', 'APE', 'GMT', 'LDO', 'ENS', 'DYDX', 'MASK', 'SSV', 'BLUR', 'ID',
-  // 81-110
   'WOO', 'KAVA', 'ROSE', 'CFX', 'MAGIC', 'HIGH', 'MULTI', 'ACH', 'DENT', 'HOT',
-  'COTI', 'ANKR', 'STORJ', 'BAND', 'OCEAN', 'LRC', 'ILV', 'YFI', 'BAL', 'REN',
-  'KNC', 'ZRX', 'OMG', 'STORJ', 'REP', 'ANT', 'MLN', 'KEEP', 'NU', 'PNT',
-  // 111-140
-  'JASMY', 'IOTX', 'CVC', 'MITH', 'CTSI', 'TRB', 'POWR', 'RLC', 'NKN', 'OGN',
-  'CTK', 'STMX', 'DUSK', 'WAN', 'ARK', 'SYS', 'VITE', 'PERP', 'DODO', 'ALPHA',
-  'BEL', 'CREAM', 'FOR', 'BURGER', 'PROM', 'ALPACA', 'POND', 'TROY', 'DIA', 'FIS',
-  // 141-170
-  'REEF', 'DEGO', 'VIDT', 'TWT', 'BIFI', 'EPS', 'BOND', 'QUICK', 'POLS', 'MIR',
-  'LINA', 'LIT', 'TCT', 'BTS', 'TORN', 'DOCK', 'NULS', 'WTC', 'NAS', 'ICX',
-  'LSK', 'IOST', 'ZIL', 'ONT', 'QTUM', 'STRAT', 'NEBL', 'GAS', 'NEO', 'ARK',
-  // 171-200
-  'WAVES', 'ZEN', 'XTZ', 'DGB', 'DCR', 'RDD', 'VIA', 'VTC', 'SYS', 'PIVX',
-  'NXS', 'GAME', 'FUN', 'PAY', 'LRC', 'MAN', 'POWR', 'REQ', 'ZRX', 'BAT',
-  'LOOM', 'NPXS', 'CMT', 'ELF', 'MFT', 'DENT', 'HOT', 'AVA', 'ENG', 'COSM',
+  'COTI', 'ANKR', 'STORJ', 'BAND', 'LRC', 'ILV', 'YFI', 'BAL', 'REN', 'KNC',
+  'ZRX', 'OMG', 'REP', 'ANT', 'MLN', 'KEEP', 'NU', 'PNT', 'JASMY', 'IOTX',
+  'CVC', 'MITH', 'CTSI', 'TRB', 'POWR', 'RLC', 'NKN', 'OGN', 'CTK', 'STMX',
+  'DUSK', 'WAN', 'ARK', 'SYS', 'VITE', 'PERP', 'DODO', 'ALPHA', 'BEL', 'CREAM',
+  'FOR', 'BURGER', 'PROM', 'ALPACA', 'POND', 'TROY', 'DIA', 'FIS', 'REEF', 'DEGO',
+  'VIDT', 'TWT', 'BIFI', 'EPS', 'BOND', 'QUICK', 'POLS', 'MIR', 'LINA', 'LIT',
+  'TCT', 'BTS', 'TORN', 'DOCK', 'NULS', 'WTC', 'NAS', 'ICX', 'LSK', 'IOST',
+  'ZIL', 'ONT', 'QTUM', 'STRAT', 'NEBL', 'GAS', 'NEO', 'ARK', 'WAVES', 'ZEN',
+  'XTZ', 'DGB', 'DCR', 'RDD', 'VIA', 'VTC', 'SYS', 'PIVX', 'NXS', 'GAME',
+  'FUN', 'PAY', 'LRC', 'MAN', 'POWR', 'REQ', 'ZRX', 'BAT', 'LOOM', 'NPXS',
+  'CMT', 'ELF', 'MFT', 'DENT', 'HOT', 'AVA', 'ENG', 'COSM', 'OCEAN', 'STORJ'
 ];
 
-// إزالة التكرار
 const UNIQUE_COINS = [...new Set(POPULAR_COINS)];
 
-// خلط المصفوفة
 function shuffle(array) {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -116,7 +108,7 @@ async function generateCharts() {
     console.log(`\n🎲 محاولة ${attempt}/${MAX_ATTEMPTS}: ${coin}`);
 
     try {
-      await captureChart(symbol, '60', output);
+      await captureChart(symbol, '240', output);
 
       const size = fs.statSync(output).size;
       if (size < 20000) {
@@ -127,7 +119,7 @@ async function generateCharts() {
       return [{
         coin,
         symbol,
-        interval: '60',
+        interval: '240',
         path: output,
         success: true,
         size,
