@@ -92,7 +92,7 @@ async function analyzeWithAI(coin, data) {
     const res = await axios.post(
       'https://api.groq.com/openai/v1/chat/completions',
       {
-        model: 'openai/gpt-oss-20b',
+        model: 'qwen/qwen3.8-27b',
         messages: [
           { role: 'system', content: 'أنت محلل عملات رقمية محترف يكتب لمنصة Binance Square.' },
           { role: 'user', content: prompt }
