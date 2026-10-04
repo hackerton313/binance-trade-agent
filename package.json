@@ -8,7 +8,7 @@
     "start": "node scripts/main.js"
   },
   "dependencies": {
-    "@neabyte/chart-to-image": "^1.1.5",
+    "quickchart-js": "^4.0.0",
     "axios": "^1.7.0"
   },
   "engines": {
