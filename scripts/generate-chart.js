@@ -1,32 +1,38 @@
 // scripts/generate-chart.js
-// يجلب كل أزواج USDT، يختار عشوائياً، مع إعادة المحاولة عند الفشل
+// يختار عملة عشوائية من قائمة 200 عملة مشهورة ويولّد شارت TradingView
+// الإعداد النهائي: Light Theme + RSI + شموع خضراء/سوداء + فريم 4h + بلا شبكة
 
 import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
-import axios from 'axios';
 
 const OUTPUT_DIR = './charts';
 const MAX_ATTEMPTS = 5;
 
-async function fetchAllUsdtPairs() {
-  try {
-    const res = await axios.get('https://api.binance.us/api/v3/exchangeInfo', {
-      timeout: 20000
-    });
+// قائمة 200 عملة مشهورة
+const POPULAR_COINS = [
+  'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'TRX',
+  'LINK', 'MATIC', 'LTC', 'BCH', 'UNI', 'ATOM', 'XLM', 'ETC', 'FIL', 'APT',
+  'ARB', 'OP', 'INJ', 'TIA', 'SUI', 'SEI', 'NEAR', 'ICP', 'HBAR', 'VET',
+  'ALGO', 'GRT', 'STX', 'IMX', 'FTM', 'SAND', 'MANA', 'AXS', 'CRO', 'AAVE',
+  'MKR', 'SNX', 'COMP', 'CRV', '1INCH', 'SUSHI', 'ENJ', 'CHZ', 'ZIL', 'BAT',
+  'RNDR', 'FET', 'AGIX', 'OCEAN', 'TAO', 'NMR', 'SHIB', 'PEPE', 'FLOKI', 'BONK',
+  'AR', 'KSM', 'ZEC', 'DASH', 'WAVES', 'EGLD', 'THETA', 'CAKE', 'AXL', 'RUNE',
+  'GALA', 'APE', 'GMT', 'LDO', 'ENS', 'DYDX', 'MASK', 'SSV', 'BLUR', 'ID',
+  'WOO', 'KAVA', 'ROSE', 'CFX', 'MAGIC', 'HIGH', 'MULTI', 'ACH', 'DENT', 'HOT',
+  'COTI', 'ANKR', 'STORJ', 'BAND', 'LRC', 'ILV', 'YFI', 'BAL', 'REN', 'KNC',
+  'ZRX', 'OMG', 'REP', 'ANT', 'MLN', 'KEEP', 'NU', 'PNT', 'JASMY', 'IOTX',
+  'CVC', 'MITH', 'CTSI', 'TRB', 'POWR', 'RLC', 'NKN', 'OGN', 'CTK', 'STMX',
+  'DUSK', 'WAN', 'ARK', 'SYS', 'VITE', 'PERP', 'DODO', 'ALPHA', 'BEL', 'CREAM',
+  'FOR', 'BURGER', 'PROM', 'ALPACA', 'POND', 'TROY', 'DIA', 'FIS', 'REEF', 'DEGO',
+  'VIDT', 'TWT', 'BIFI', 'EPS', 'BOND', 'QUICK', 'POLS', 'MIR', 'LINA', 'LIT',
+  'TCT', 'BTS', 'TORN', 'DOCK', 'NULS', 'WTC', 'NAS', 'ICX', 'LSK', 'IOST',
+  'ONT', 'QTUM', 'STRAT', 'NEBL', 'GAS', 'NEO', 'ZEN', 'XTZ', 'DGB', 'DCR',
+  'RDD', 'VIA', 'VTC', 'PIVX', 'NXS', 'GAME', 'FUN', 'PAY', 'MAN', 'REQ',
+  'LOOM', 'CMT', 'ELF', 'MFT', 'AVA', 'ENG', 'COSM', 'DOCK', 'PNT', 'VITE'
+];
 
-    const pairs = res.data.symbols
-      .filter(s => s.quoteAsset === 'USDT' && s.status === 'TRADING')
-      .map(s => s.baseAsset);
-
-    const unique = [...new Set(pairs)];
-    console.log(`📊 عدد العملات المتاحة: ${unique.length}`);
-    return unique;
-  } catch (err) {
-    console.log(`⚠️ فشل جلب القائمة: ${err.message}`);
-    return ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'LINK'];
-  }
-}
+const UNIQUE_COINS = [...new Set(POPULAR_COINS)];
 
 function shuffle(array) {
   const arr = [...array];
@@ -40,15 +46,15 @@ function shuffle(array) {
 async function captureChart(symbol, interval, output) {
   const browser = await chromium.launch();
   const page = await browser.newPage({
-    viewport: { width: 1200, height: 800 },
+    viewport: { width: 1400, height: 900 },
   });
 
   const html = `
     <!DOCTYPE html>
     <html>
     <head><style>
-      body { margin: 0; background: #0B0E11; }
-      #tv { width: 1200px; height: 800px; }
+      body { margin: 0; background: #FFFFFF; }
+      #tv { width: 1400px; height: 900px; }
     </style></head>
     <body>
     <div id="tv"></div>
@@ -58,17 +64,30 @@ async function captureChart(symbol, interval, output) {
       "container_id": "tv",
       "symbol": "${symbol}",
       "interval": "${interval}",
-      "theme": "dark",
+      "theme": "light",
       "style": "1",
       "locale": "en",
-      "width": 1200,
-      "height": 800,
+      "width": 1400,
+      "height": 900,
       "studies": [
-        "RSI@tv-basicstudies",
-        "STD;Supertrend"
+        "RSI@tv-basicstudies"
       ],
       "hide_top_toolbar": false,
-      "save_image": false
+      "save_image": false,
+      "overrides": {
+        "mainSeriesProperties.candleStyle.upColor": "#26A69A",
+        "mainSeriesProperties.candleStyle.downColor": "#000000",
+        "mainSeriesProperties.candleStyle.borderUpColor": "#26A69A",
+        "mainSeriesProperties.candleStyle.borderDownColor": "#000000",
+        "mainSeriesProperties.candleStyle.wickUpColor": "#26A69A",
+        "mainSeriesProperties.candleStyle.wickDownColor": "#000000",
+        "paneProperties.background": "#FFFFFF",
+        "paneProperties.backgroundType": "solid",
+        "paneProperties.vertGridProperties.color": "rgba(0,0,0,0)",
+        "paneProperties.horzGridProperties.color": "rgba(0,0,0,0)",
+        "scalesProperties.lineColor": "rgba(0,0,0,0)",
+        "scalesProperties.textColor": "#131722"
+      }
     });
     </script>
     </body>
@@ -88,8 +107,8 @@ async function generateCharts() {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
-  const allCoins = await fetchAllUsdtPairs();
-  const shuffled = shuffle(allCoins);
+  console.log(`📊 قائمة العملات: ${UNIQUE_COINS.length} عملة`);
+  const shuffled = shuffle(UNIQUE_COINS);
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const coin = shuffled[attempt - 1];
@@ -101,9 +120,8 @@ async function generateCharts() {
     console.log(`\n🎲 محاولة ${attempt}/${MAX_ATTEMPTS}: ${coin}`);
 
     try {
-      await captureChart(symbol, '60', output);
+      await captureChart(symbol, '240', output);
 
-      // ✅ الفحص الوحيد: حجم الملف
       const size = fs.statSync(output).size;
       if (size < 20000) {
         throw new Error(`الصورة صغيرة جداً (${(size / 1024).toFixed(1)} KB)`);
@@ -113,7 +131,7 @@ async function generateCharts() {
       return [{
         coin,
         symbol,
-        interval: '60',
+        interval: '240',
         path: output,
         success: true,
         size,
