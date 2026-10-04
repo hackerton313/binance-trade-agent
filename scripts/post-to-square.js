@@ -5,6 +5,9 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// المسار الفعلي للمهارة المستنسخة
+const SKILL_SCRIPT = '/tmp/binance-skills/skills/binance/square-post/scripts/post-image.mjs';
+
 function postWithImage(text, imagePath) {
   if (!fs.existsSync(imagePath)) {
     return { success: false, error: `الصورة غير موجودة: ${imagePath}` };
@@ -15,47 +18,34 @@ function postWithImage(text, imagePath) {
     return { success: false, error: 'BINANCE_SQUARE_OPENAPI_KEY غير موجود' };
   }
 
-  // استبدل علامات الاقتباس والرموز الخطرة
-  const safeText = text
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/\$/g, '\\$')
-    .replace(/`/g, '\\`');
-
-  const absImagePath = path.resolve(imagePath);
-  const absScript = path.resolve('node_modules/.bin/../..', 'scripts/post-image.mjs');
-
-  // ابحث عن post-image.mjs في عدة مواقع محتملة
-  const possibleScripts = [
-    'scripts/post-image.mjs',
-    path.join(process.env.HOME || '', '.claude/skills/square-post/scripts/post-image.mjs'),
-    path.join(process.env.HOME || '', '.skills/square-post/scripts/post-image.mjs'),
-    path.join(process.env.HOME || '', 'skills/square-post/scripts/post-image.mjs'),
-  ];
-
-  let scriptPath = null;
-  for (const p of possibleScripts) {
-    if (fs.existsSync(p)) {
-      scriptPath = p;
-      break;
-    }
-  }
-
-  if (!scriptPath) {
+  if (!fs.existsSync(SKILL_SCRIPT)) {
     return { 
       success: false, 
-      error: 'لم يتم العثور على post-image.mjs. تأكد من تثبيت مهارة square-post.',
-      searched: possibleScripts
+      error: `الملف غير موجود: ${SKILL_SCRIPT}`,
+      hint: 'تحقق من خطوة Clone square-post skill في الـ workflow'
     };
   }
 
+  // استبدل علامات الاقتباس
+  const safeText = text.replace(/"/g, '\\"');
+
+  const absImagePath = path.resolve(imagePath);
+
+  // استخدم cwd = مجلد المهارة لأن السكريبت يحتاج node_modules الخاصة به
+  const skillDir = path.dirname(path.dirname(SKILL_SCRIPT));
+
   try {
-    const cmd = `BINANCE_SQUARE_OPENAPI_KEY="${apiKey}" node "${scriptPath}" --text "${safeText}" --images "${absImagePath}"`;
+    const cmd = `BINANCE_SQUARE_OPENAPI_KEY="${apiKey}" node "${SKILL_SCRIPT}" --text "${safeText}" --images "${absImagePath}"`;
     
+    console.log(`▶️  تشغيل: node post-image.mjs`);
+    console.log(`📁 مجلد المهارة: ${skillDir}`);
+    console.log(`🖼️  الصورة: ${absImagePath}`);
+
     const output = execSync(cmd, { 
       encoding: 'utf-8',
       timeout: 120000,
-      cwd: process.cwd()
+      cwd: skillDir,
+      env: { ...process.env, BINANCE_SQUARE_OPENAPI_KEY: apiKey }
     });
 
     console.log(output);
@@ -64,8 +54,8 @@ function postWithImage(text, imagePath) {
     return { 
       success: false, 
       error: error.message.slice(0, 300),
-      stdout: error.stdout?.toString().slice(0, 300),
-      stderr: error.stderr?.toString().slice(0, 300)
+      stdout: error.stdout?.toString().slice(0, 500),
+      stderr: error.stderr?.toString().slice(0, 500)
     };
   }
 }
