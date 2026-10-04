@@ -2,8 +2,8 @@ name: Binance Trade Agent
 
 on:
   schedule:
-    - cron: '0 */2 * * *'  # كل ساعتين
-  workflow_dispatch:        # يدوياً من GitHub
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
 
 jobs:
   post:
@@ -24,7 +24,13 @@ jobs:
 
       - name: Install square-post skill
         run: |
-          npx skills add https://github.com/binance/binance-skills-hub/tree/main/skills/binance/square-post
+          npx -y skills add https://github.com/binance/binance-skills-hub/tree/main/skills/binance/square-post || true
+
+      - name: Find skill location
+        run: |
+          echo "🔍 البحث عن post-image.mjs..."
+          find $HOME -name "post-image.mjs" 2>/dev/null || echo "غير موجود في HOME"
+          find . -name "post-image.mjs" 2>/dev/null || echo "غير موجود في المشروع"
 
       - name: Run agent
         env:
