@@ -1,15 +1,14 @@
 {
   "name": "binance-trade-agent",
   "version": "1.0.0",
-  "description": "Auto-post trade signals with chart images to Binance Square",
+  "description": "Auto-post trade signals with TradingView charts to Binance Square",
   "main": "scripts/main.js",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "start": "node scripts/main.js"
   },
   "dependencies": {
-    "quickchart-js": "^4.0.0",
-    "axios": "^1.7.0"
+    "playwright": "^1.49.0"
   },
   "engines": {
     "node": ">=20"
