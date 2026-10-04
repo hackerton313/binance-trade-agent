@@ -8,7 +8,7 @@ on:
 jobs:
   post:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -22,26 +22,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
       - name: Clone square-post skill
         run: |
           git clone --depth 1 https://github.com/binance/binance-skills-hub.git /tmp/binance-skills
-          echo "=== محتويات المستودع ==="
-          find /tmp/binance-skills -type f -name "*.mjs" | head -30
-          echo "=== البحث عن square-post ==="
-          find /tmp/binance-skills -type d -name "*square*" | head -10
-
-      - name: Install skill dependencies
-        run: |
-          SKILL_DIR=$(find /tmp/binance-skills -type d -name "square-post" | head -1)
-          if [ -n "$SKILL_DIR" ]; then
-            echo "وجدت المهارة في: $SKILL_DIR"
-            cd "$SKILL_DIR"
-            if [ -f "package.json" ]; then
-              npm install
-            fi
-          else
-            echo "❌ لم يتم العثور على square-post"
-          fi
+          ls -la /tmp/binance-skills/skills/binance/square-post/scripts/
 
       - name: Run agent
         env:
