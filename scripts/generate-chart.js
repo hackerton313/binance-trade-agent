@@ -7,9 +7,8 @@ import path from 'path';
 import axios from 'axios';
 
 const OUTPUT_DIR = './charts';
-const MAX_ATTEMPTS = 5; // عدد المحاولات قبل الاستسلام
+const MAX_ATTEMPTS = 5;
 
-// 1. جلب كل أزواج USDT المتاحة
 async function fetchAllUsdtPairs() {
   try {
     const res = await axios.get('https://api.binance.us/api/v3/exchangeInfo', {
@@ -29,7 +28,6 @@ async function fetchAllUsdtPairs() {
   }
 }
 
-// 2. خلط المصفوفة (Fisher-Yates)
 function shuffle(array) {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -39,7 +37,6 @@ function shuffle(array) {
   return arr;
 }
 
-// 3. توليد شارت TradingView
 async function captureChart(symbol, interval, output) {
   const browser = await chromium.launch();
   const page = await browser.newPage({
@@ -79,25 +76,13 @@ async function captureChart(symbol, interval, output) {
   `;
 
   await page.setContent(html);
-  await page.waitForTimeout(10000);
-
-  // تحقق من ظهور الشارت (هل الصفحة تحتوي على كانفاس؟)
-  const hasCanvas = await page.evaluate(() => {
-    return document.querySelectorAll('canvas').length > 0;
-  });
-
-  if (!hasCanvas) {
-    await browser.close();
-    throw new Error('الشارت لم يُحمّل (لا يوجد canvas)');
-  }
-
+  await page.waitForTimeout(12000);
   await page.mouse.move(5, 5);
   await page.waitForTimeout(500);
   await page.screenshot({ path: output });
   await browser.close();
 }
 
-// 4. الدالة الرئيسية مع إعادة المحاولة
 async function generateCharts() {
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -118,10 +103,10 @@ async function generateCharts() {
     try {
       await captureChart(symbol, '60', output);
 
-      // تحقق من حجم الصورة (شارت فارغ يكون صغيراً جداً)
+      // ✅ الفحص الوحيد: حجم الملف
       const size = fs.statSync(output).size;
       if (size < 20000) {
-        throw new Error(`الصورة صغيرة جداً (${(size / 1024).toFixed(1)} KB) — قد تكون فارغة`);
+        throw new Error(`الصورة صغيرة جداً (${(size / 1024).toFixed(1)} KB)`);
       }
 
       console.log(`  ✅ نجح: ${output} (${(size / 1024).toFixed(1)} KB)`);
@@ -137,12 +122,10 @@ async function generateCharts() {
     } catch (err) {
       console.log(`  ❌ فشل: ${err.message}`);
 
-      // احذف الملف الفاشل
       if (fs.existsSync(output)) {
         fs.unlinkSync(output);
       }
 
-      // انتظر قبل المحاولة التالية
       await new Promise(r => setTimeout(r, 2000));
     }
   }
