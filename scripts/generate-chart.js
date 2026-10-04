@@ -1,6 +1,5 @@
 // scripts/generate-chart.js
 // يختار عملة عشوائية من قائمة 200 عملة مشهورة ويولّد شارت TradingView
-// الإعداد النهائي: Light Theme + RSI + شموع خضراء/سوداء + فريم 4h + بلا شبكة
 
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -9,31 +8,41 @@ import path from 'path';
 const OUTPUT_DIR = './charts';
 const MAX_ATTEMPTS = 5;
 
-// قائمة 200 عملة مشهورة
+// قائمة 200 عملة مشهورة (مرتبة حسب القيمة السوقية)
 const POPULAR_COINS = [
+  // Top 20
   'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'TRX',
   'LINK', 'MATIC', 'LTC', 'BCH', 'UNI', 'ATOM', 'XLM', 'ETC', 'FIL', 'APT',
+  // 21-50
   'ARB', 'OP', 'INJ', 'TIA', 'SUI', 'SEI', 'NEAR', 'ICP', 'HBAR', 'VET',
   'ALGO', 'GRT', 'STX', 'IMX', 'FTM', 'SAND', 'MANA', 'AXS', 'CRO', 'AAVE',
   'MKR', 'SNX', 'COMP', 'CRV', '1INCH', 'SUSHI', 'ENJ', 'CHZ', 'ZIL', 'BAT',
+  // 51-80
   'RNDR', 'FET', 'AGIX', 'OCEAN', 'TAO', 'NMR', 'SHIB', 'PEPE', 'FLOKI', 'BONK',
   'AR', 'KSM', 'ZEC', 'DASH', 'WAVES', 'EGLD', 'THETA', 'CAKE', 'AXL', 'RUNE',
   'GALA', 'APE', 'GMT', 'LDO', 'ENS', 'DYDX', 'MASK', 'SSV', 'BLUR', 'ID',
+  // 81-110
   'WOO', 'KAVA', 'ROSE', 'CFX', 'MAGIC', 'HIGH', 'MULTI', 'ACH', 'DENT', 'HOT',
-  'COTI', 'ANKR', 'STORJ', 'BAND', 'LRC', 'ILV', 'YFI', 'BAL', 'REN', 'KNC',
-  'ZRX', 'OMG', 'REP', 'ANT', 'MLN', 'KEEP', 'NU', 'PNT', 'JASMY', 'IOTX',
-  'CVC', 'MITH', 'CTSI', 'TRB', 'POWR', 'RLC', 'NKN', 'OGN', 'CTK', 'STMX',
-  'DUSK', 'WAN', 'ARK', 'SYS', 'VITE', 'PERP', 'DODO', 'ALPHA', 'BEL', 'CREAM',
-  'FOR', 'BURGER', 'PROM', 'ALPACA', 'POND', 'TROY', 'DIA', 'FIS', 'REEF', 'DEGO',
-  'VIDT', 'TWT', 'BIFI', 'EPS', 'BOND', 'QUICK', 'POLS', 'MIR', 'LINA', 'LIT',
-  'TCT', 'BTS', 'TORN', 'DOCK', 'NULS', 'WTC', 'NAS', 'ICX', 'LSK', 'IOST',
-  'ONT', 'QTUM', 'STRAT', 'NEBL', 'GAS', 'NEO', 'ZEN', 'XTZ', 'DGB', 'DCR',
-  'RDD', 'VIA', 'VTC', 'PIVX', 'NXS', 'GAME', 'FUN', 'PAY', 'MAN', 'REQ',
-  'LOOM', 'CMT', 'ELF', 'MFT', 'AVA', 'ENG', 'COSM', 'DOCK', 'PNT', 'VITE'
+  'COTI', 'ANKR', 'STORJ', 'BAND', 'OCEAN', 'LRC', 'ILV', 'YFI', 'BAL', 'REN',
+  'KNC', 'ZRX', 'OMG', 'STORJ', 'REP', 'ANT', 'MLN', 'KEEP', 'NU', 'PNT',
+  // 111-140
+  'JASMY', 'IOTX', 'CVC', 'MITH', 'CTSI', 'TRB', 'POWR', 'RLC', 'NKN', 'OGN',
+  'CTK', 'STMX', 'DUSK', 'WAN', 'ARK', 'SYS', 'VITE', 'PERP', 'DODO', 'ALPHA',
+  'BEL', 'CREAM', 'FOR', 'BURGER', 'PROM', 'ALPACA', 'POND', 'TROY', 'DIA', 'FIS',
+  // 141-170
+  'REEF', 'DEGO', 'VIDT', 'TWT', 'BIFI', 'EPS', 'BOND', 'QUICK', 'POLS', 'MIR',
+  'LINA', 'LIT', 'TCT', 'BTS', 'TORN', 'DOCK', 'NULS', 'WTC', 'NAS', 'ICX',
+  'LSK', 'IOST', 'ZIL', 'ONT', 'QTUM', 'STRAT', 'NEBL', 'GAS', 'NEO', 'ARK',
+  // 171-200
+  'WAVES', 'ZEN', 'XTZ', 'DGB', 'DCR', 'RDD', 'VIA', 'VTC', 'SYS', 'PIVX',
+  'NXS', 'GAME', 'FUN', 'PAY', 'LRC', 'MAN', 'POWR', 'REQ', 'ZRX', 'BAT',
+  'LOOM', 'NPXS', 'CMT', 'ELF', 'MFT', 'DENT', 'HOT', 'AVA', 'ENG', 'COSM',
 ];
 
+// إزالة التكرار
 const UNIQUE_COINS = [...new Set(POPULAR_COINS)];
 
+// خلط المصفوفة
 function shuffle(array) {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -46,15 +55,15 @@ function shuffle(array) {
 async function captureChart(symbol, interval, output) {
   const browser = await chromium.launch();
   const page = await browser.newPage({
-    viewport: { width: 1400, height: 900 },
+    viewport: { width: 1200, height: 800 },
   });
 
   const html = `
     <!DOCTYPE html>
     <html>
     <head><style>
-      body { margin: 0; background: #FFFFFF; }
-      #tv { width: 1400px; height: 900px; }
+      body { margin: 0; background: #0B0E11; }
+      #tv { width: 1200px; height: 800px; }
     </style></head>
     <body>
     <div id="tv"></div>
@@ -64,30 +73,17 @@ async function captureChart(symbol, interval, output) {
       "container_id": "tv",
       "symbol": "${symbol}",
       "interval": "${interval}",
-      "theme": "light",
+      "theme": "dark",
       "style": "1",
       "locale": "en",
-      "width": 1400,
-      "height": 900,
+      "width": 1200,
+      "height": 800,
       "studies": [
-        "RSI@tv-basicstudies"
+        "RSI@tv-basicstudies",
+        "STD;Supertrend"
       ],
       "hide_top_toolbar": false,
-      "save_image": false,
-      "overrides": {
-        "mainSeriesProperties.candleStyle.upColor": "#26A69A",
-        "mainSeriesProperties.candleStyle.downColor": "#000000",
-        "mainSeriesProperties.candleStyle.borderUpColor": "#26A69A",
-        "mainSeriesProperties.candleStyle.borderDownColor": "#000000",
-        "mainSeriesProperties.candleStyle.wickUpColor": "#26A69A",
-        "mainSeriesProperties.candleStyle.wickDownColor": "#000000",
-        "paneProperties.background": "#FFFFFF",
-        "paneProperties.backgroundType": "solid",
-        "paneProperties.vertGridProperties.color": "rgba(0,0,0,0)",
-        "paneProperties.horzGridProperties.color": "rgba(0,0,0,0)",
-        "scalesProperties.lineColor": "rgba(0,0,0,0)",
-        "scalesProperties.textColor": "#131722"
-      }
+      "save_image": false
     });
     </script>
     </body>
@@ -120,7 +116,7 @@ async function generateCharts() {
     console.log(`\n🎲 محاولة ${attempt}/${MAX_ATTEMPTS}: ${coin}`);
 
     try {
-      await captureChart(symbol, '240', output);
+      await captureChart(symbol, '60', output);
 
       const size = fs.statSync(output).size;
       if (size < 20000) {
@@ -131,7 +127,7 @@ async function generateCharts() {
       return [{
         coin,
         symbol,
-        interval: '240',
+        interval: '60',
         path: output,
         success: true,
         size,
