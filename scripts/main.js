@@ -1,23 +1,21 @@
 // scripts/main.js
-// السكريبت الرئيسي: يولّد الشارت + النص + ينشر
+// السكريبت الرئيسي: توليد + نشر
 
 const { generateCharts } = require('./generate-chart');
 const { postWithImage } = require('./post-to-square');
-const fs = require('fs');
 
-function buildSignalText(coin, timeframe) {
+function buildSignalText(coin, timeframe, exchange) {
   const now = new Date().toUTCString().slice(0, 16);
   
-  return `📊 إشارة تداول - ${coin}/USDT (${timeframe})
+  return `📊 إشارة تداول - $${coin}/USDT (${timeframe})
 
-🕐 التوقيت: ${now} UTC
+🕐 ${now} UTC
+📡 المصدر: ${exchange}
 
-📈 التحليل:
-• العملة: $${coin}
+📈 التحليل الفني:
 • الإطار الزمني: ${timeframe}
 • الشارت مرفق أدناه
-
-💡 راقب مستويات الدعم والمقاومة الظاهرة على الشارت قبل الدخول.
+• راقب مستويات الدعم والمقاومة
 
 ⚠️ إدارة المخاطر:
 • لا تخاطر بأكثر من 1-2% من رأس المال
@@ -30,22 +28,21 @@ function buildSignalText(coin, timeframe) {
 async function main() {
   console.log('🚀 بدء التشغيل...\n');
 
-  // 1. توليد الشارتات
   console.log('📊 المرحلة 1: توليد الشارتات');
   const charts = await generateCharts();
   const successCharts = charts.filter(c => c.success);
 
   if (successCharts.length === 0) {
-    console.log('❌ لم يتم توليد أي شارت، إيقاف التشغيل');
+    console.log('❌ لم يتم توليد أي شارت، إيقاف');
     process.exit(1);
   }
 
-  // 2. نشر شارت واحد فقط (لتجنب تجاوز الحد اليومي)
-  console.log('\n📝 المرحلة 2: النشر');
-  const chart = successCharts[0];
-  const text = buildSignalText(chart.coin, '1h');
+  // اختر عملة عشوائية من الناجحة لتجنب التكرار
+  const chart = successCharts[Math.floor(Math.random() * successCharts.length)];
 
-  console.log(`📤 نشر ${chart.coin}...`);
+  console.log(`\n📝 المرحلة 2: النشر - ${chart.coin} (${chart.exchange})`);
+  const text = buildSignalText(chart.coin, '1h', chart.exchange);
+
   const result = postWithImage(text, chart.path);
 
   if (result.success) {
