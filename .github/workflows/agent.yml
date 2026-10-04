@@ -22,15 +22,26 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install square-post skill
+      - name: Clone square-post skill
         run: |
-          npx -y skills add https://github.com/binance/binance-skills-hub/tree/main/skills/binance/square-post || true
+          git clone --depth 1 https://github.com/binance/binance-skills-hub.git /tmp/binance-skills
+          echo "=== محتويات المستودع ==="
+          find /tmp/binance-skills -type f -name "*.mjs" | head -30
+          echo "=== البحث عن square-post ==="
+          find /tmp/binance-skills -type d -name "*square*" | head -10
 
-      - name: Find skill location
+      - name: Install skill dependencies
         run: |
-          echo "🔍 البحث عن post-image.mjs..."
-          find $HOME -name "post-image.mjs" 2>/dev/null || echo "غير موجود في HOME"
-          find . -name "post-image.mjs" 2>/dev/null || echo "غير موجود في المشروع"
+          SKILL_DIR=$(find /tmp/binance-skills -type d -name "square-post" | head -1)
+          if [ -n "$SKILL_DIR" ]; then
+            echo "وجدت المهارة في: $SKILL_DIR"
+            cd "$SKILL_DIR"
+            if [ -f "package.json" ]; then
+              npm install
+            fi
+          else
+            echo "❌ لم يتم العثور على square-post"
+          fi
 
       - name: Run agent
         env:
